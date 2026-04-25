@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const WHATSAPP_NUMBER = '905333224888'
 
@@ -10,27 +10,76 @@ const esyaTipleri = [
   'Diğer',
 ]
 
+// Custom Icon Components for clarity
+const LocationIcon = () => (
+  <svg className="w-5 h-5 text-white/40 group-focus-within:text-[#2563EB]/80 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+  </svg>
+)
+
+const ChevronIcon = () => (
+  <svg className="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+  </svg>
+)
+
 export default function QuoteForm() {
   const [form, setForm] = useState({
-    nereden: '',
-    nereye: '',
+    neredenIl: '',
+    neredenIlce: '',
+    nereyeIl: '',
+    nereyeIlce: '',
     esyaTipi: '',
     tarih: '',
   })
+  
   const [focused, setFocused] = useState('')
+  const [provinces, setProvinces] = useState([])
+
+  // Fetch Provinces and Districts
+  useEffect(() => {
+    fetch('https://turkiyeapi.dev/api/v1/provinces')
+      .then(res => res.json())
+      .then(res => {
+         const sorted = res.data.sort((a,b) => a.name.localeCompare(b.name, 'tr'))
+         setProvinces(sorted)
+      })
+      .catch(err => console.error("API Fetch Error:", err))
+  }, [])
 
   const handleChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setForm(prev => {
+      const newForm = { ...prev, [name]: value }
+      // Reset district if province changes
+      if (name === 'neredenIl') newForm.neredenIlce = ''
+      if (name === 'nereyeIl') newForm.nereyeIlce = ''
+      return newForm
+    })
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const message = `Merhaba, ${form.nereden} - ${form.nereye} arası ${form.esyaTipi} taşımacılığı için ${form.tarih} tarihinde hizmet almak istiyorum.`
+    const message = `Merhaba, ${form.neredenIl} (${form.neredenIlce}) ---> ${form.nereyeIl} (${form.nereyeIlce}) güzergahında ${form.esyaTipi} yüküm var. ${form.tarih} tarihi için fiyat teklifi almak istiyorum.`
     const encoded = encodeURIComponent(message)
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`, '_blank')
   }
 
-  const isValid = form.nereden && form.nereye && form.esyaTipi && form.tarih
+  const isValid = 
+    form.neredenIl && form.neredenIlce && 
+    form.nereyeIl && form.nereyeIlce && 
+    form.esyaTipi && form.tarih
+
+  const neredenDistricts = provinces.find(p => p.name === form.neredenIl)?.districts?.sort((a,b) => a.name.localeCompare(b.name, 'tr')) || []
+  const nereyeDistricts = provinces.find(p => p.name === form.nereyeIl)?.districts?.sort((a,b) => a.name.localeCompare(b.name, 'tr')) || []
+
+  // Ensure whole input area opens native datepicker picker (chrome/safari)
+  const handleDateClick = (e) => {
+    if (e.target.showPicker) {
+      e.target.showPicker();
+    }
+  }
 
   return (
     <section id="teklif" className="py-24 lg:py-32 bg-[#0F172A] relative overflow-hidden">
@@ -38,7 +87,6 @@ export default function QuoteForm() {
       <div className="absolute inset-0">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#2563EB]/6 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-[#16A34A]/5 rounded-full blur-3xl" />
-        {/* Grid pattern */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
           backgroundSize: '40px 40px',
@@ -62,15 +110,13 @@ export default function QuoteForm() {
             </h2>
             <p className="mt-6 text-white/50 text-lg leading-relaxed">
               Formu doldurun, taşıma detaylarınız otomatik olarak WhatsApp
-              mesajına dönüşsün. Ekibimiz en kısa sürede size dönüş yapsın.
+              mesajına dönüşsün. Ekibimiz anında maliyet hesabı yapıp size dönsün.
             </p>
-
-            {/* Features */}
             <div className="mt-8 space-y-4">
               {[
                 'Ücretsiz fiyat teklifi',
                 'WhatsApp üzerinden anlık iletişim',
-                'En geç 30 dakika içinde dönüş',
+                'Türkiye geneli hizmet ağı',
               ].map(item => (
                 <div key={item} className="flex items-center gap-3">
                   <div className="w-6 h-6 rounded-full bg-[#16A34A]/18 flex items-center justify-center flex-shrink-0">
@@ -86,124 +132,93 @@ export default function QuoteForm() {
 
           {/* Right - Form */}
           <div>
-            <form
-              onSubmit={handleSubmit}
-              className="bg-white/5 backdrop-blur-xl border border-white/8 rounded-3xl p-8 sm:p-10 space-y-5"
-            >
-              {/* Nereden */}
+            <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl border border-white/8 rounded-3xl p-8 sm:p-10 space-y-6">
+              
+              {/* Nereden Row */}
               <div>
-                <label className="block text-white/70 text-sm font-semibold mb-2">
-                  Nereden
-                </label>
-                <div className={`relative rounded-xl transition-all duration-200 ${
-                  focused === 'nereden' ? 'ring-2 ring-[#2563EB]/40' : ''
-                }`}>
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="w-5 h-5 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                    </svg>
+                <label className="block text-white/70 text-sm font-semibold mb-2">Nereden Alınacak</label>
+                <div className="grid grid-cols-2 gap-3 group">
+                  <div className={`relative rounded-xl transition-all duration-200 ${focused === 'neredenIl' ? 'ring-2 ring-[#2563EB]/40' : ''}`}>
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><LocationIcon /></div>
+                    <select name="neredenIl" value={form.neredenIl} onChange={handleChange} onFocus={() => setFocused('neredenIl')} onBlur={() => setFocused('')} className="form-input appearance-none cursor-pointer text-sm" required>
+                      <option value="" className="bg-[#0F172A] text-white/40">İl Seçin</option>
+                      {provinces.map(p => <option key={p.id} value={p.name} className="bg-[#0F172A] text-white">{p.name}</option>)}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><ChevronIcon /></div>
                   </div>
-                  <input
-                    type="text"
-                    name="nereden"
-                    value={form.nereden}
-                    onChange={handleChange}
-                    onFocus={() => setFocused('nereden')}
-                    onBlur={() => setFocused('')}
-                    placeholder="Örn: Hatay, Antakya"
-                    className="form-input"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Nereye */}
-              <div>
-                <label className="block text-white/70 text-sm font-semibold mb-2">
-                  Nereye
-                </label>
-                <div className={`relative rounded-xl transition-all duration-200 ${
-                  focused === 'nereye' ? 'ring-2 ring-[#2563EB]/40' : ''
-                }`}>
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="w-5 h-5 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    name="nereye"
-                    value={form.nereye}
-                    onChange={handleChange}
-                    onFocus={() => setFocused('nereye')}
-                    onBlur={() => setFocused('')}
-                    placeholder="Örn: İzmir, Bornova"
-                    className="form-input"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Eşya Tipi */}
-              <div>
-                <label className="block text-white/70 text-sm font-semibold mb-2">
-                  Eşya Tipi
-                </label>
-                <div className={`relative rounded-xl transition-all duration-200 ${
-                  focused === 'esyaTipi' ? 'ring-2 ring-[#2563EB]/40' : ''
-                }`}>
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="w-5 h-5 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-                    </svg>
-                  </div>
-                  <select
-                    name="esyaTipi"
-                    value={form.esyaTipi}
-                    onChange={handleChange}
-                    onFocus={() => setFocused('esyaTipi')}
-                    onBlur={() => setFocused('')}
-                    className="form-input appearance-none cursor-pointer"
-                    required
-                  >
-                    <option value="" className="bg-[#0F172A] text-white/40">Seçiniz</option>
-                    {esyaTipleri.map(tip => (
-                      <option key={tip} value={tip} className="bg-[#0F172A] text-white">{tip}</option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                    <svg className="w-4 h-4 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
+                  <div className={`relative rounded-xl transition-all duration-200 ${focused === 'neredenIlce' ? 'ring-2 ring-[#2563EB]/40' : ''} ${!form.neredenIl && 'opacity-50'}`}>
+                    <select name="neredenIlce" value={form.neredenIlce} onChange={handleChange} onFocus={() => setFocused('neredenIlce')} onBlur={() => setFocused('')} disabled={!form.neredenIl} className="form-input appearance-none cursor-pointer pl-4 text-sm" required>
+                      <option value="" className="bg-[#0F172A] text-white/40">İlçe Seçin</option>
+                      {neredenDistricts.map(d => <option key={d.id} value={d.name} className="bg-[#0F172A] text-white">{d.name}</option>)}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><ChevronIcon /></div>
                   </div>
                 </div>
               </div>
 
-              {/* Tarih */}
+              {/* Nereye Row */}
               <div>
-                <label className="block text-white/70 text-sm font-semibold mb-2">
-                  Taşıma Tarihi
-                </label>
-                <div className={`relative rounded-xl transition-all duration-200 ${
-                  focused === 'tarih' ? 'ring-2 ring-[#2563EB]/40' : ''
-                }`}>
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="w-5 h-5 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                    </svg>
+                <label className="block text-white/70 text-sm font-semibold mb-2">Nereye Teslim</label>
+                <div className="grid grid-cols-2 gap-3 group">
+                  <div className={`relative rounded-xl transition-all duration-200 ${focused === 'nereyeIl' ? 'ring-2 ring-[#2563EB]/40' : ''}`}>
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><LocationIcon /></div>
+                    <select name="nereyeIl" value={form.nereyeIl} onChange={handleChange} onFocus={() => setFocused('nereyeIl')} onBlur={() => setFocused('')} className="form-input appearance-none cursor-pointer text-sm" required>
+                      <option value="" className="bg-[#0F172A] text-white/40">İl Seçin</option>
+                      {provinces.map(p => <option key={p.id} value={p.name} className="bg-[#0F172A] text-white">{p.name}</option>)}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><ChevronIcon /></div>
                   </div>
-                  <input
-                    type="date"
-                    name="tarih"
-                    value={form.tarih}
-                    onChange={handleChange}
-                    onFocus={() => setFocused('tarih')}
-                    onBlur={() => setFocused('')}
-                    className="form-input"
-                    required
-                  />
+                  <div className={`relative rounded-xl transition-all duration-200 ${focused === 'nereyeIlce' ? 'ring-2 ring-[#2563EB]/40' : ''} ${!form.nereyeIl && 'opacity-50'}`}>
+                    <select name="nereyeIlce" value={form.nereyeIlce} onChange={handleChange} onFocus={() => setFocused('nereyeIlce')} onBlur={() => setFocused('')} disabled={!form.nereyeIl} className="form-input appearance-none cursor-pointer pl-4 text-sm" required>
+                      <option value="" className="bg-[#0F172A] text-white/40">İlçe Seçin</option>
+                      {nereyeDistricts.map(d => <option key={d.id} value={d.name} className="bg-[#0F172A] text-white">{d.name}</option>)}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><ChevronIcon /></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Eşya Tipi */}
+                <div>
+                  <label className="block text-white/70 text-sm font-semibold mb-2">Eşya Tipi</label>
+                  <div className={`relative rounded-xl transition-all duration-200 group ${focused === 'esyaTipi' ? 'ring-2 ring-[#2563EB]/40' : ''}`}>
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-white/40 group-focus-within:text-[#2563EB]/80 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                      </svg>
+                    </div>
+                    <select name="esyaTipi" value={form.esyaTipi} onChange={handleChange} onFocus={() => setFocused('esyaTipi')} onBlur={() => setFocused('')} className="form-input appearance-none cursor-pointer text-sm" required>
+                      <option value="" className="bg-[#0F172A] text-white/40">Seçiniz</option>
+                      {esyaTipleri.map(tip => <option key={tip} value={tip} className="bg-[#0F172A] text-white">{tip}</option>)}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><ChevronIcon /></div>
+                  </div>
+                </div>
+
+                {/* Tarih */}
+                <div>
+                  <label className="block text-white/70 text-sm font-semibold mb-2">Taşıma Tarihi</label>
+                  <div className={`relative rounded-xl transition-all duration-200 group ${focused === 'tarih' ? 'ring-2 ring-[#2563EB]/40' : ''}`}>
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-white/40 group-focus-within:text-[#2563EB]/80 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                      </svg>
+                    </div>
+                    <input
+                      type="date"
+                      name="tarih"
+                      min={new Date().toISOString().split('T')[0]}
+                      value={form.tarih}
+                      onChange={handleChange}
+                      onFocus={() => setFocused('tarih')}
+                      onBlur={() => setFocused('')}
+                      onClick={handleDateClick}
+                      className="form-input cursor-pointer text-sm font-medium datepicker-full-trigger"
+                      required
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -211,10 +226,8 @@ export default function QuoteForm() {
               <button
                 type="submit"
                 disabled={!isValid}
-                className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl text-white font-bold text-base transition-all duration-250 mt-2 ${
-                  isValid
-                    ? 'bg-[#EA580C] hover:bg-[#C2410C] shadow-lg shadow-[#EA580C]/25 hover:shadow-xl hover:shadow-[#EA580C]/35 hover:-translate-y-0.5 cursor-pointer'
-                    : 'bg-white/8 cursor-not-allowed opacity-50'
+                className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl text-white font-bold text-base transition-all mt-4 ${
+                  isValid ? 'bg-[#EA580C] hover:bg-[#C2410C] shadow-lg shadow-[#EA580C]/25 hover:-translate-y-0.5 cursor-pointer' : 'bg-white/8 cursor-not-allowed opacity-50'
                 }`}
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -222,10 +235,6 @@ export default function QuoteForm() {
                 </svg>
                 WhatsApp ile Teklif Al
               </button>
-
-              <p className="text-center text-white/25 text-xs mt-3">
-                Bilgileriniz sadece teklif oluşturmak için kullanılır.
-              </p>
             </form>
           </div>
         </div>
