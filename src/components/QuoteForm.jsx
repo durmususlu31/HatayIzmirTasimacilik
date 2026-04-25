@@ -74,13 +74,6 @@ export default function QuoteForm() {
   const neredenDistricts = provinces.find(p => p.name === form.neredenIl)?.districts?.sort((a,b) => a.name.localeCompare(b.name, 'tr')) || []
   const nereyeDistricts = provinces.find(p => p.name === form.nereyeIl)?.districts?.sort((a,b) => a.name.localeCompare(b.name, 'tr')) || []
 
-  // Ensure whole input area opens native datepicker picker (chrome/safari)
-  const handleDateClick = (e) => {
-    if (e.target.showPicker) {
-      e.target.showPicker();
-    }
-  }
-
   return (
     <section id="teklif" className="py-24 lg:py-32 bg-[#0F172A] relative overflow-hidden">
       {/* Decorative background */}
@@ -213,10 +206,8 @@ export default function QuoteForm() {
                       onChange={handleChange}
                       onFocus={() => setFocused('tarih')}
                       onBlur={() => setFocused('')}
-                      onClick={handleDateClick}
-                      className="form-input cursor-pointer text-sm font-medium datepicker-full-trigger"
+                      className="form-input cursor-pointer text-sm font-medium w-full max-w-full date-input"
                       required
-                      style={{ colorScheme: 'dark' }}
                     />
                   </div>
                 </div>
