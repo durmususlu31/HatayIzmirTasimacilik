@@ -9,7 +9,7 @@ export default function About() {
           <div className="relative">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white rounded-2xl p-8 shadow-sm border border-[#E2E8F0] text-center">
-                <div className="text-4xl font-bold text-[#0F172A]" style={{ fontFamily: 'var(--font-family-display)' }}>10+</div>
+                <div className="text-4xl font-bold text-[#0F172A]" style={{ fontFamily: 'var(--font-family-display)' }}>30+</div>
                 <div className="text-sm text-[#64748B] mt-1 font-medium">Yıl Deneyim</div>
               </div>
               <div className="bg-[#2563EB] rounded-2xl p-8 shadow-md text-center">
