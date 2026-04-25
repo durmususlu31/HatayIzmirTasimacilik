@@ -14,7 +14,7 @@ const trucks = [
     name: 'Scania R500',
     driver: 'Mustafa Türkmenoğlu',
     capacity: '25 Ton',
-    phone: '905333224888',
+    phone: '905354608650',
     type: 'Mega Tır',
     image: '/images/scania-r500.png',
     brand: 'Scania',
